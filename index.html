@@ -31,6 +31,24 @@
   .refresh-btn:hover{border-color:var(--accent);color:var(--accent);}
   .logout-btn{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;padding:4px 8px;border-radius:6px;}
   .logout-btn:hover{color:var(--red);}
+  .troubleshoot-panel{position:fixed;bottom:20px;right:20px;width:380px;max-height:500px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;z-index:1000;box-shadow:0 8px 32px rgba(0,0,0,0.4);overflow-y:auto;display:none;}
+  .troubleshoot-panel.show{display:block;}
+  .troubleshoot-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .troubleshoot-title{font-size:14px;font-weight:700;color:var(--accent);}
+  .troubleshoot-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;}
+  .troubleshoot-section{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .troubleshoot-section:last-child{border-bottom:none;}
+  .troubleshoot-label{font-size:11px;font-weight:700;color:#a78bfa;text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;}
+  .troubleshoot-text{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;line-height:1.6;}
+  .troubleshoot-code{background:var(--surface2);padding:8px;border-radius:6px;margin-top:6px;font-size:10px;color:var(--green);word-break:break-all;}
+  .troubleshoot-btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;margin-top:8px;font-weight:600;}
+  .troubleshoot-btn:hover{opacity:0.9;}
+  .troubleshoot-status{display:inline-block;padding:4px 8px;border-radius:4px;font-size:10px;font-weight:600;margin-top:6px;}
+  .troubleshoot-status.ok{background:var(--green-bg);color:var(--green);}
+  .troubleshoot-status.error{background:var(--red-bg);color:var(--red);}
+  .troubleshoot-toggle-btn{position:fixed;bottom:20px;right:20px;width:50px;height:50px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(79,142,255,0.4);z-index:999;}
+  .troubleshoot-toggle-btn:hover{transform:scale(1.1);}
+  .troubleshoot-toggle-btn.hide{display:none;}
   .loading-bar{position:fixed;top:56px;left:0;right:0;height:2px;background:var(--border);z-index:99;}
   .loading-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#a78bfa);width:0%;transition:width 0.4s ease;}
   .loading-status{position:fixed;top:66px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 18px;font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;z-index:98;white-space:nowrap;display:none;}
@@ -1124,14 +1142,27 @@ function saveAllSettings(){
   const apiKey=document.getElementById('apiKeyInput').value.trim();
   const wpUser=document.getElementById('wpUserInput').value.trim();
   const wpPass=document.getElementById('wpPassInput').value.trim();
-  if(apiKey){
-    if(!apiKey.startsWith('sk-ant-')){showToast('Anthropic key should start with sk-ant-',true);return;}
-    localStorage.setItem('wn_api_key',apiKey);
+  
+  if(!apiKey){
+    showToast('❌ Please enter your Anthropic API key',true);
+    return;
   }
+  if(!apiKey.startsWith('sk-ant-')){
+    showToast('❌ Anthropic key should start with sk-ant-',true);
+    return;
+  }
+  
+  localStorage.setItem('wn_api_key',apiKey);
+  console.log('✓ API Key saved to localStorage');
+  
   if(wpUser)localStorage.setItem('wn_wp_user',wpUser);
   if(wpPass)localStorage.setItem('wn_wp_pass',wpPass);
-  showToast('✓ Settings saved!');
-  setTimeout(closeSettings,600);
+  
+  showToast('✓ Settings saved successfully!');
+  setTimeout(()=>{
+    closeSettings();
+    location.reload();
+  },600);
 }
 function clearAllSettings(){
   localStorage.removeItem('wn_api_key');localStorage.removeItem('wn_wp_user');localStorage.removeItem('wn_wp_pass');
@@ -1143,6 +1174,15 @@ function clearAllSettings(){
 function saveApiKey(){saveAllSettings();}
 function clearApiKey(){clearAllSettings();}
 function getApiKey(){return localStorage.getItem('wn_api_key')||'';}
+function toggleTroubleshoot(){var panel=document.getElementById('troubleshootPanel');var toggle=document.getElementById('troubleshootToggle');if(panel.classList.contains('show')){closeTroubleshoot();}else{openTroubleshoot();}}
+function openTroubleshoot(){var panel=document.getElementById('troubleshootPanel');var toggle=document.getElementById('troubleshootToggle');panel.classList.add('show');toggle.classList.add('hide');checkApiKey();checkLocalStorage();}
+function closeTroubleshoot(){var panel=document.getElementById('troubleshootPanel');var toggle=document.getElementById('troubleshootToggle');panel.classList.remove('show');toggle.classList.remove('hide');}
+function checkApiKey(){var key=getApiKey();var status=document.getElementById('apiKeyStatus2');if(!key){status.innerHTML='<span class="troubleshoot-status error">❌ No API key found</span><br><div style="margin-top:8px;color:var(--muted);">Click "Open API Settings" to add your key</div>';}else if(!key.startsWith('sk-ant-')){status.innerHTML='<span class="troubleshoot-status error">❌ Invalid format</span><br><div style="margin-top:8px;color:var(--muted);">Key should start with sk-ant-</div>';}else{status.innerHTML='<span class="troubleshoot-status ok">✓ Valid API key</span><br><div style="margin-top:8px;color:var(--muted);">Ready to use</div>';}}
+function checkLocalStorage(){var check=document.getElementById('storageCheck');try{var test='test_'+Date.now();localStorage.setItem(test,'1');var found=localStorage.getItem(test);if(found){localStorage.removeItem(test);check.innerHTML='<span class="troubleshoot-status ok">✓ localStorage working</span>';}else{check.innerHTML='<span class="troubleshoot-status error">❌ localStorage failed</span>';}}catch(e){check.innerHTML='<span class="troubleshoot-status error">❌ '+e.message+'</span>';}}
+function clearApiKeyFromStorage(){if(confirm('Clear API key from storage?')){localStorage.removeItem('wn_api_key');localStorage.removeItem('wn_wp_user');localStorage.removeItem('wn_wp_pass');showToast('✓ All settings cleared');checkApiKey();}}
+function logDebugInfo(){console.log('=== WILDNET TROUBLESHOOT ===');console.log('Version: v2.1.0');console.log('API Key saved:',!!localStorage.getItem('wn_api_key'));console.log('API Key value:',localStorage.getItem('wn_api_key'));console.log('WP User saved:',!!localStorage.getItem('wn_wp_user'));console.log('WP Pass saved:',!!localStorage.getItem('wn_wp_pass'));console.log('localStorage available:',typeof localStorage!=='undefined');console.log('=== END DEBUG ===');alert('✓ Debug info logged to console (F12)');}
+function openSettingsFromTroubleshoot(){closeTroubleshoot();openSettings();}
+function hardReloadPage(){location.reload(true);}
 function getWpUser(){return localStorage.getItem('wn_wp_user')||'';}
 function getWpPass(){return localStorage.getItem('wn_wp_pass')||'';}
 
@@ -1546,8 +1586,10 @@ function closeCreatePost(){document.getElementById('createPostModal').style.disp
 
 async function runCreatePost(){
   // Validate API key first
+  var apiKey=getApiKey();
   if(!apiKey||apiKey.trim()===''||!apiKey.startsWith('sk-ant-')){
-    showToast('❌ API key not set. Please add your Anthropic API key in the login screen.',true);
+    showToast('❌ API key not set. Click ⚙ API Key and add your Anthropic API key.',true);
+    openSettings();
     return;
   }
   
@@ -2001,6 +2043,46 @@ function showToast(msg,isErr){
   setTimeout(()=>{t.style.display='none';},4000);
 }
 </script>
+<button class="troubleshoot-toggle-btn" id="troubleshootToggle" onclick="toggleTroubleshoot()">🔧</button>
+
+<div class="troubleshoot-panel" id="troubleshootPanel">
+  <div class="troubleshoot-header">
+    <div class="troubleshoot-title">🔧 Troubleshoot</div>
+    <button class="troubleshoot-close" onclick="closeTroubleshoot()">✕</button>
+  </div>
+
+  <div class="troubleshoot-section">
+    <div class="troubleshoot-label">API Key Status</div>
+    <div id="apiKeyStatus2" class="troubleshoot-text">Checking...</div>
+    <button class="troubleshoot-btn" onclick="checkApiKey()">Check Now</button>
+  </div>
+
+  <div class="troubleshoot-section">
+    <div class="troubleshoot-label">Stored API Key</div>
+    <div id="storedKeyDisplay" class="troubleshoot-text">
+      <span id="storedKeyValue" style="color:var(--green);">✓ Found</span>
+      <button class="troubleshoot-btn" onclick="clearApiKeyFromStorage()">Clear & Start Over</button>
+    </div>
+  </div>
+
+  <div class="troubleshoot-section">
+    <div class="troubleshoot-label">localStorage Check</div>
+    <div class="troubleshoot-text" id="storageCheck">Checking localStorage...</div>
+    <button class="troubleshoot-btn" onclick="checkLocalStorage()">Refresh Check</button>
+  </div>
+
+  <div class="troubleshoot-section">
+    <div class="troubleshoot-label">Browser Console</div>
+    <div class="troubleshoot-text">Open DevTools (F12) → Console to see detailed logs</div>
+    <button class="troubleshoot-btn" onclick="logDebugInfo()">Log Debug Info</button>
+  </div>
+
+  <div class="troubleshoot-section">
+    <div class="troubleshoot-label">Quick Actions</div>
+    <button class="troubleshoot-btn" style="width:100%;margin-bottom:6px;" onclick="openSettingsFromTroubleshoot()">🔑 Open API Settings</button>
+    <button class="troubleshoot-btn" style="width:100%;" onclick="hardReloadPage()">🔄 Hard Refresh Page</button>
+  </div>
+</div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>
