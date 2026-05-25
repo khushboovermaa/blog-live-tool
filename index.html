@@ -359,6 +359,27 @@
         <option value="draft">Save as Draft (Review before publishing)</option>
       </select>
     </div>
+
+    <div class="modal-field" id="blogEnhancementsField">
+      <label class="modal-label">Blog Enhancements</label>
+      <div style="display:flex;flex-direction:column;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:12px;color:var(--text);font-weight:500;line-height:1.5">
+          <input type="checkbox" id="optKeyTakeaways" checked style="margin-top:2px;cursor:pointer;accent-color:var(--accent)">
+          <span>
+            <span style="display:block;font-weight:700">🎯 Add Key Takeaways box at the top</span>
+            <span style="display:block;font-size:10px;color:var(--muted);margin-top:2px">4–5 quick bullet points summarising the article (boosts dwell time + featured snippets)</span>
+          </span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:12px;color:var(--text);font-weight:500;line-height:1.5">
+          <input type="checkbox" id="optInterlink" checked style="margin-top:2px;cursor:pointer;accent-color:var(--accent)">
+          <span>
+            <span style="display:block;font-weight:700">🔗 Auto-interlink to Wildnet service pages</span>
+            <span style="display:block;font-size:10px;color:var(--muted);margin-top:2px">Detects mentions of SEO, PPC, link building, social media etc. and links them to the matching service page (max 6 links)</span>
+          </span>
+        </label>
+      </div>
+    </div>
+
     <div id="createPostLog" style="display:none;margin-bottom:16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;font-family:JetBrains Mono,monospace;line-height:2.2;max-height:200px;overflow-y:auto"></div>
     <div class="modal-btns">
       <button class="modal-btn cancel" onclick="closeCreatePost()">Cancel</button>
@@ -1560,6 +1581,9 @@ function openCreatePost(type){
   document.getElementById('createPostBtn').disabled=false;
   document.getElementById('createPostBtn').textContent=isBlog?'✦ Write & Publish Blog':'✦ Write & Publish Service Page';
   document.getElementById('createPostBtn').onclick=runCreatePost;
+  // Show blog enhancements (Key Takeaways + Interlinking) only for blog posts
+  var enhBox=document.getElementById('blogEnhancementsField');
+  if(enhBox) enhBox.style.display=isBlog?'block':'none';
   // Load WP categories
   loadWPCategories();
 }
@@ -1583,6 +1607,176 @@ async function loadWPCategories(){
   }
 }
 function closeCreatePost(){document.getElementById('createPostModal').style.display='none';}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── BLOG ENHANCEMENTS: Service-page interlinking + Key Takeaways box ──────
+// ══════════════════════════════════════════════════════════════════════════
+
+// Map of keyword phrases → Wildnet service page URL.
+// Order doesn't matter — the interlinker sorts by length (longest first)
+// so "ecommerce seo" is matched before "seo", "amazon ppc" before "ppc", etc.
+const SERVICE_LINKS = {
+  // SEO
+  'ecommerce seo services': 'https://www.wildnettechnologies.com/digital-marketing/ecommerce-seo-services',
+  'ecommerce seo': 'https://www.wildnettechnologies.com/digital-marketing/ecommerce-seo-services',
+  'local seo services': 'https://www.wildnettechnologies.com/digital-marketing/local-seo-services',
+  'local seo': 'https://www.wildnettechnologies.com/digital-marketing/local-seo-services',
+  'technical seo': 'https://www.wildnettechnologies.com/technical-seo-agency',
+  'on-page seo': 'https://www.wildnettechnologies.com/on-page-seo-services',
+  'on page seo': 'https://www.wildnettechnologies.com/on-page-seo-services',
+  'off-page seo': 'https://www.wildnettechnologies.com/off-page-seo-services',
+  'off page seo': 'https://www.wildnettechnologies.com/off-page-seo-services',
+  'organic seo services': 'https://www.wildnettechnologies.com/organic-seo-services',
+  'organic seo': 'https://www.wildnettechnologies.com/organic-seo-services',
+  'google penalty recovery': 'https://www.wildnettechnologies.com/digital-marketing/google-penalty-recovery-services',
+  'ga4 consulting': 'https://www.wildnettechnologies.com/ga4-consulting-services',
+  'app store optimisation': 'https://www.wildnettechnologies.com/app-store-optimisation-services',
+  'app store optimization': 'https://www.wildnettechnologies.com/app-store-optimisation-services',
+  'aso services': 'https://www.wildnettechnologies.com/app-store-optimisation-services',
+  'digital pr': 'https://www.wildnettechnologies.com/digital-pr-services',
+  'quora marketing': 'https://www.wildnettechnologies.com/strategic-quora-marketing-services',
+  'seo services': 'https://www.wildnettechnologies.com/digital-marketing/seo-services',
+
+  // PPC / Paid Ads
+  'amazon ppc': 'https://www.wildnettechnologies.com/digital-marketing/amazon-ppc-services',
+  'ecommerce ppc': 'https://www.wildnettechnologies.com/e-commerce-ppc-services',
+  'e-commerce ppc': 'https://www.wildnettechnologies.com/e-commerce-ppc-services',
+  'bing ads': 'https://www.wildnettechnologies.com/bing-ads-management-services',
+  'facebook ads': 'https://www.wildnettechnologies.com/facebook-ads-services',
+  'display advertising': 'https://www.wildnettechnologies.com/display-advertising-services',
+  'remarketing campaign': 'https://www.wildnettechnologies.com/remarketing-campaign-services',
+  'remarketing': 'https://www.wildnettechnologies.com/remarketing-campaign-services',
+  'youtube advertising': 'https://www.wildnettechnologies.com/youtube-advertising-services',
+  'youtube ads': 'https://www.wildnettechnologies.com/youtube-advertising-services',
+  'ppc services': 'https://www.wildnettechnologies.com/digital-marketing/ppc-services',
+  'pay-per-click': 'https://www.wildnettechnologies.com/digital-marketing/ppc-services',
+  'pay per click': 'https://www.wildnettechnologies.com/digital-marketing/ppc-services',
+
+  // Link Building / Guest Posting
+  'guest posting services': 'https://www.wildnettechnologies.com/digital-marketing/guest-posting-services',
+  'guest posting': 'https://www.wildnettechnologies.com/digital-marketing/guest-posting-services',
+  'guest post': 'https://www.wildnettechnologies.com/digital-marketing/guest-posting-services',
+  'link building services': 'https://www.wildnettechnologies.com/digital-marketing/link-building-services',
+  'link building': 'https://www.wildnettechnologies.com/digital-marketing/link-building-services',
+  'backlink building': 'https://www.wildnettechnologies.com/digital-marketing/link-building-services',
+
+  // Social Media
+  'social media marketing': 'https://www.wildnettechnologies.com/digital-marketing/social-media-marketing-services',
+  'social media management': 'https://www.wildnettechnologies.com/digital-marketing/social-media-marketing-services',
+  'facebook marketing': 'https://www.wildnettechnologies.com/facebook-marketing-services',
+  'linkedin marketing': 'https://www.wildnettechnologies.com/linkedin-marketing-services',
+  'twitter marketing': 'https://www.wildnettechnologies.com/twitter-marketing-services',
+
+  // AI / LLM SEO
+  'generative ai seo': 'https://www.wildnettechnologies.com/generative-ai-seo-company',
+  'ai link building': 'https://www.wildnettechnologies.com/ai-link-building-services',
+  'ai marketing agency': 'https://www.wildnettechnologies.com/ai-marketing-agency',
+  'ai digital marketing': 'https://www.wildnettechnologies.com/ai-digital-marketing-agency',
+  'llm seo': 'https://www.wildnettechnologies.com/llm-seo-services',
+  'perplexity seo': 'https://www.wildnettechnologies.com/perplexity-seo-services',
+  'claude ai seo': 'https://www.wildnettechnologies.com/claude-ai-seo-services',
+  'chatgpt seo': 'https://www.wildnettechnologies.com/chatgpt-seo-services',
+  'ai seo': 'https://www.wildnettechnologies.com/ai-seo-services'
+};
+
+// Auto-interlink: scan blog HTML and wrap the FIRST occurrence of each
+// service keyword in a hyperlink to its service page. Respects:
+//   • One link per destination URL (no duplicate links)
+//   • Skips text inside headings (h1-h4) and existing <a> tags
+//   • Caps at maxLinks total (default 6 — Google's sweet-spot for internal links)
+//   • Longest phrase wins (so "ecommerce seo" beats bare "seo")
+function autoInterlinkBlog(html, maxLinks){
+  if(!html) return {html:html, count:0};
+  maxLinks = maxLinks || 6;
+  var temp = document.createElement('div');
+  temp.innerHTML = html;
+  var usedUrls = {};
+  var linkCount = 0;
+  var entries = Object.keys(SERVICE_LINKS).map(function(k){
+    return {keyword:k, url:SERVICE_LINKS[k]};
+  }).sort(function(a,b){return b.keyword.length - a.keyword.length;});
+
+  function isInsideSkipTag(node){
+    var p = node.parentNode;
+    while(p && p !== temp){
+      var tn = p.nodeName;
+      if(tn==='A'||tn==='H1'||tn==='H2'||tn==='H3'||tn==='H4') return true;
+      p = p.parentNode;
+    }
+    return false;
+  }
+
+  function walk(node){
+    if(linkCount >= maxLinks) return;
+    if(node.nodeType === 3){ // text node
+      if(isInsideSkipTag(node)) return;
+      var text = node.textContent;
+      if(!text || text.length < 3) return;
+      // Find the EARLIEST keyword match in this text node.
+      // Because `entries` is pre-sorted longest-first, same-position ties
+      // are automatically won by the longest phrase (e.g. "ecommerce seo"
+      // beats bare "seo" when both start at the same index).
+      var bestMatch = null;
+      for(var i = 0; i < entries.length; i++){
+        var entry = entries[i];
+        if(usedUrls[entry.url]) continue;
+        var esc = entry.keyword.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        var re = new RegExp('\\b('+esc+')\\b','i');
+        var m = re.exec(text);
+        if(m && (!bestMatch || m.index < bestMatch.index)){
+          bestMatch = {index:m.index, matched:m[0], entry:entry};
+        }
+      }
+      if(bestMatch){
+        var before = text.substring(0, bestMatch.index);
+        var matched = bestMatch.matched;
+        var after = text.substring(bestMatch.index + matched.length);
+        var a = document.createElement('a');
+        a.href = bestMatch.entry.url;
+        a.textContent = matched;
+        a.style.cssText = 'color:#4f8eff;text-decoration:underline;font-weight:600';
+        var parent = node.parentNode;
+        if(before) parent.insertBefore(document.createTextNode(before), node);
+        parent.insertBefore(a, node);
+        var afterNode = null;
+        if(after){
+          afterNode = document.createTextNode(after);
+          parent.insertBefore(afterNode, node);
+        }
+        parent.removeChild(node);
+        usedUrls[bestMatch.entry.url] = true;
+        linkCount++;
+        if(afterNode) walk(afterNode);
+      }
+    } else if(node.nodeType === 1){
+      var children = Array.prototype.slice.call(node.childNodes);
+      for(var j = 0; j < children.length; j++){
+        walk(children[j]);
+        if(linkCount >= maxLinks) return;
+      }
+    }
+  }
+  walk(temp);
+  return {html: temp.innerHTML, count: linkCount};
+}
+
+// Build a styled "Key Takeaways" box as a self-contained Gutenberg wp:html block.
+// Using wp:html means the styling renders identically on every WP theme
+// regardless of whether Spectra / GeneratePress / etc. is active.
+function buildKeyTakeawaysBlock(takeaways){
+  if(!takeaways || !takeaways.length) return '';
+  var lis = takeaways.map(function(t){
+    if(!t) return '';
+    return '<li style="margin:0 0 10px 0;line-height:1.65;color:#1f2937;font-size:16px">'+escHtml(String(t))+'</li>';
+  }).filter(Boolean).join('');
+  if(!lis) return '';
+  return '<!-- wp:html -->\n'+
+    '<div style="background:linear-gradient(135deg,#eff6ff 0%,#f5f3ff 100%);border-left:5px solid #4f8eff;padding:24px 28px;margin:0 0 32px 0;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'+
+      '<h2 style="margin:0 0 14px 0;font-size:22px;color:#1e3a8a;font-weight:700;display:flex;align-items:center;gap:8px">🎯 Key Takeaways</h2>'+
+      '<ul style="margin:0;padding-left:22px;list-style:disc">'+lis+'</ul>'+
+    '</div>\n'+
+    '<!-- /wp:html -->\n';
+}
 
 async function runCreatePost(){
   // Validate API key first
@@ -1940,9 +2134,9 @@ async function runCreatePost(){
 
     // STEP 2: Write full SEO blog content with RAG context
     clog('⏳ AI writing full SEO blog post with E-E-A-T framework (1000-1500 words)…');
-    var ragContext='You are an expert SEO content writer trained on Google\'s E-E-A-T framework and advanced content strategy. INSTRUCTIONS: (1) DATES: Always use current year '+getCurrentYear()+' in content. Never mention 2024 or outdated years. (2) TITLES: Create varied, compelling titles using different patterns: Question format "How to [task]: [outcome]", Listicle "[Number] Ways to [outcome]", Problem-solution "Why [problem] and How to Fix It", Case-study "Real Results: [outcome] in [timeframe]". Rotate patterns. (3) E-E-A-T SIGNALS: Include personal experience, original research, source attribution, author expertise indicators, trust-building language. (4) CONTENT: Aim for 800-1200 words with proper semantic structure (h2, h3, p, ul, li, strong, em). (5) KEYWORDS: Naturally place primary keyword in H1, first 100 words, subheadings, conclusion. (6) OUTPUT: Return ONLY valid JSON with keys: title, content, meta_description, changes_made. Content must be clean HTML - no markdown, no backslashes, no newlines inside strings.';
-    var blogInstructions='Write a comprehensive SEO blog post (1000-1500 words). Include: engaging intro with keyword, 5-7 H2 sections covering all aspects, bullet points, FAQ section with 5 questions. Follow E-E-A-T framework with original insights.';
-    var writeMsg=ragContext+' TOPIC: '+topic+' | KEYWORD: '+keyword+' | COMPETITOR INSIGHTS: '+competitorInfo.substring(0,800)+' | CURRENT DATE: '+getCurrentDate()+' | '+blogInstructions+' Use ONLY these HTML tags: h2 h3 p ul li strong em. NO backslash-n in content. Output ONLY JSON (no markdown, start with { end with }): {"title":"engaging title with keyword","content":"<h2>heading</h2><p>text</p>","meta_description":"150 char description","changes_made":["point1","point2"]}';
+    var ragContext='You are an expert SEO content writer trained on Google\'s E-E-A-T framework and advanced content strategy. INSTRUCTIONS: (1) DATES: Always use current year '+getCurrentYear()+' in content. Never mention 2024 or outdated years. (2) TITLES: Create varied, compelling titles using different patterns: Question format "How to [task]: [outcome]", Listicle "[Number] Ways to [outcome]", Problem-solution "Why [problem] and How to Fix It", Case-study "Real Results: [outcome] in [timeframe]". Rotate patterns. (3) E-E-A-T SIGNALS: Include personal experience, original research, source attribution, author expertise indicators, trust-building language. (4) CONTENT: Aim for 800-1200 words with proper semantic structure (h2, h3, p, ul, li, strong, em). (5) KEYWORDS: Naturally place primary keyword in H1, first 100 words, subheadings, conclusion. (6) NATURAL SERVICE MENTIONS: Where it fits naturally and adds value, mention related Wildnet services by name in plain text — e.g. "SEO services", "PPC services", "link building", "guest posting", "social media marketing", "local SEO", "technical SEO", "AI SEO", "ecommerce SEO" etc. Do NOT insert URLs or links yourself — just write the service name in the body text. The system will auto-link these afterwards. (7) KEY TAKEAWAYS: Provide 4-5 SHORT (under 20 words each) impactful sentences in the key_takeaways array — each one a standalone insight the reader will gain. These render as a highlighted box at the top of the article. (8) OUTPUT: Return ONLY valid JSON with keys: title, content, meta_description, key_takeaways, changes_made. Content must be clean HTML - no markdown, no backslashes, no newlines inside strings.';
+    var blogInstructions='Write a comprehensive SEO blog post (1000-1500 words). Include: engaging intro with keyword, 5-7 H2 sections covering all aspects, bullet points, FAQ section with 5 questions. Follow E-E-A-T framework with original insights. Naturally mention related Wildnet services (SEO services, PPC services, link building, guest posting, social media marketing etc.) in body text where contextually relevant — just the service name in plain text, no manual links.';
+    var writeMsg=ragContext+' TOPIC: '+topic+' | KEYWORD: '+keyword+' | COMPETITOR INSIGHTS: '+competitorInfo.substring(0,800)+' | CURRENT DATE: '+getCurrentDate()+' | '+blogInstructions+' Use ONLY these HTML tags: h2 h3 p ul li strong em. NO backslash-n in content. Output ONLY JSON (no markdown, start with { end with }): {"title":"engaging title with keyword","content":"<h2>heading</h2><p>text</p>","meta_description":"150 char description","key_takeaways":["takeaway sentence 1","takeaway sentence 2","takeaway sentence 3","takeaway sentence 4","takeaway sentence 5"],"changes_made":["point1","point2"]}';
 
     var writeResp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -1986,6 +2180,39 @@ async function runCreatePost(){
     if(!finalContent.includes('<'))finalContent='<p>'+finalContent+'</p>';
     clog('✓ Blog content ready ('+finalContent.length+' chars)','#22c55e');
 
+    // ── ENHANCEMENT 1: Auto-interlink service-page keywords ──
+    var optInterlinkEl=document.getElementById('optInterlink');
+    var doInterlink=optInterlinkEl?optInterlinkEl.checked:true;
+    if(doInterlink){
+      try{
+        var ilResult=autoInterlinkBlog(finalContent, 6);
+        if(ilResult.count>0){
+          finalContent=ilResult.html;
+          clog('🔗 Added '+ilResult.count+' internal links to service pages','#22c55e');
+        } else {
+          clog('  No matching service-page mentions found — no links added','var(--muted)');
+        }
+      }catch(ilErr){clog('⚠ Interlinking skipped: '+ilErr.message,'#f59e0b');}
+    } else {
+      clog('  Auto-interlinking disabled by user','var(--muted)');
+    }
+
+    // ── ENHANCEMENT 2: Build Key Takeaways block (prepended after Gutenberg conversion) ──
+    var optTakeawaysEl=document.getElementById('optKeyTakeaways');
+    var doTakeaways=optTakeawaysEl?optTakeawaysEl.checked:true;
+    var takeawaysHTML='';
+    if(doTakeaways){
+      var rawTakeaways=Array.isArray(parsed.key_takeaways)?parsed.key_takeaways.filter(function(t){return t&&String(t).trim();}):[];
+      if(rawTakeaways.length>=2){
+        takeawaysHTML=buildKeyTakeawaysBlock(rawTakeaways.slice(0,5));
+        clog('🎯 Key Takeaways box built ('+rawTakeaways.length+' points)','#22c55e');
+      } else {
+        clog('  AI did not return key_takeaways — skipping Key Takeaways box','var(--muted)');
+      }
+    } else {
+      clog('  Key Takeaways box disabled by user','var(--muted)');
+    }
+
     clog('⏳ Uploading featured image…');
     var featuredMediaId=null;
     try{
@@ -2000,6 +2227,9 @@ async function runCreatePost(){
 
     clog('⏳ Publishing blog post to WordPress as '+postStatus+'…');
     var gbContent=convertToGutenberg(finalContent);
+    // Prepend the Key Takeaways block at the TOP of the post (after Gutenberg conversion
+    // so it stays as a clean self-contained wp:html block and convertToGutenberg doesn't mangle it).
+    if(takeawaysHTML) gbContent = takeawaysHTML + gbContent;
     var pubBody={title:finalTitle,content:gbContent,status:postStatus,slug:finalSlug};
     if(featuredMediaId)pubBody.featured_media=featuredMediaId;
     if(categoryId)pubBody.categories=[parseInt(categoryId)];
