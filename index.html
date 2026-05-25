@@ -198,7 +198,7 @@
     <div class="topbar-brand">Wildnet GSC</div>
     <div class="topbar-site">wildnettechnologies.com</div>
     <div class="topbar-right">
-      <div class="version-badge" title="v6.0&#10;BLOG: Key Takeaways box at top + Auto-interlink to service pages&#10;SERVICE PAGE: Smart core-name extraction + Off-domain detection + FAQ dedup + Multi-variant token sweep" style="cursor:help">✓ v6.0 · Blog+Service ✓</div>
+      <div class="version-badge" title="v6.1&#10;BLOG: Key Takeaways + Auto-interlink + Closing CTA + Author byline + Acronym fix + Anti-AI-pattern prompt&#10;SERVICE PAGE: Smart core-name extraction + Off-domain detection + FAQ dedup + Multi-variant token sweep" style="cursor:help">✓ v6.1 · Blog+Service ✓</div>
       <div class="week-badge" id="weekBadge"></div>
       <div class="alert-badge" id="alertBadge" onclick="showActionView()">🎯 <span id="alertCount">0</span> actionable URLs</div>
       <span id="lastUpdated" style="font-size:10px;color:var(--muted);font-family:JetBrains Mono,monospace"></span>
@@ -317,10 +317,10 @@
   <div class="modal" style="max-width:560px">
     <div class="modal-title" id="createPostTitle">✦ Create New Post</div>
     <div class="modal-sub" id="createPostSub">AI will research the topic, write full SEO content and publish it live on your website</div>
-    <div style="display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#22c55e;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:4px 10px;margin:8px 0 14px;letter-spacing:0.3px">
-      <span style="font-weight:700">v6.0</span>
+    <div style="display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#22c55e;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:4px 10px;margin:8px 0 14px;letter-spacing:0.3px;flex-wrap:wrap">
+      <span style="font-weight:700">v6.1</span>
       <span style="color:var(--muted)">·</span>
-      <span id="modalFeatureManifest">🎯 Key Takeaways · 🔗 Service Interlinking · 🛠 Off-domain service pages</span>
+      <span id="modalFeatureManifest">🎯 Takeaways · 🔗 Interlinks · 📣 CTA · 👤 Byline · Acronyms · Anti-AI prompt</span>
     </div>
     <input type="hidden" id="createPostContentType" value="blog">
     <div class="modal-field">
@@ -382,6 +382,18 @@
             <span style="display:block;font-size:10px;color:var(--muted);margin-top:2px">Detects mentions of SEO, PPC, link building, social media etc. and links them to the matching service page (max 6 links)</span>
           </span>
         </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:12px;color:var(--text);font-weight:500;line-height:1.5">
+          <input type="checkbox" id="optClosingCTA" checked style="margin-top:2px;cursor:pointer;accent-color:var(--accent)">
+          <span>
+            <span style="display:block;font-weight:700">📣 Add closing CTA block (conversion-focused)</span>
+            <span style="display:block;font-size:10px;color:var(--muted);margin-top:2px">Styled call-to-action at the end of the blog, deep-linked to the most relevant Wildnet service page</span>
+          </span>
+        </label>
+        <div style="border-top:1px dashed var(--border);padding-top:10px;margin-top:2px">
+          <label style="display:block;font-size:11px;color:var(--text);font-weight:600;margin-bottom:4px">👤 Author Byline <span style="color:var(--muted);font-weight:400">(optional — adds named E-E-A-T signal at top)</span></label>
+          <input type="text" id="newPostAuthor" placeholder='e.g. "Priya Sharma, SEO Director · 12+ years" — leave blank for none' style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:inherit;outline:none" autocomplete="off">
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Format: <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">Name, Role · Optional bio</code> — gets a styled byline block with avatar initials</div>
+        </div>
       </div>
     </div>
 
@@ -1783,6 +1795,69 @@ function buildKeyTakeawaysBlock(takeaways){
     '<!-- /wp:html -->\n';
 }
 
+// Pick the most relevant Wildnet service URL based on the blog's topic/keyword.
+// Used to deep-link the closing CTA to the right service page instead of
+// generic /contact-us. Falls back to /contact-us if no clear match.
+function pickPrimaryServiceURL(keyword, topic){
+  var k = ((keyword||'')+' '+(topic||'')).toLowerCase();
+  if(/\bppc\b|pay.per.click|google.ads|paid.ads/.test(k)) return 'https://www.wildnettechnologies.com/digital-marketing/ppc-services';
+  if(/amazon.ppc/.test(k)) return 'https://www.wildnettechnologies.com/digital-marketing/amazon-ppc-services';
+  if(/facebook.ads/.test(k)) return 'https://www.wildnettechnologies.com/facebook-ads-services';
+  if(/youtube.ad/.test(k)) return 'https://www.wildnettechnologies.com/youtube-advertising-services';
+  if(/link.build|backlink/.test(k)) return 'https://www.wildnettechnologies.com/digital-marketing/link-building-services';
+  if(/guest.post/.test(k)) return 'https://www.wildnettechnologies.com/digital-marketing/guest-posting-services';
+  if(/social.media|smm/.test(k)) return 'https://www.wildnettechnologies.com/digital-marketing/social-media-marketing-services';
+  if(/local.seo/.test(k)) return 'https://www.wildnettechnologies.com/digital-marketing/local-seo-services';
+  if(/technical.seo/.test(k)) return 'https://www.wildnettechnologies.com/technical-seo-agency';
+  if(/(ecommerce|e-commerce).seo/.test(k)) return 'https://www.wildnettechnologies.com/digital-marketing/ecommerce-seo-services';
+  if(/(ai.seo|llm.seo|chatgpt.seo|claude.ai.seo|perplexity.seo|generative.ai.seo)/.test(k)) return 'https://www.wildnettechnologies.com/ai-seo-services';
+  if(/seo/.test(k)) return 'https://www.wildnettechnologies.com/digital-marketing/seo-services';
+  if(/content.market|content.writ/.test(k)) return 'https://www.wildnettechnologies.com/content-marketing-services';
+  if(/(reputation.management|orm)/.test(k)) return 'https://www.wildnettechnologies.com/digital-marketing/online-reputation-management-services';
+  if(/digital.pr/.test(k)) return 'https://www.wildnettechnologies.com/digital-pr-services';
+  if(/(b2b.lead|lead.gen|generate.lead|demand.gen)/.test(k)) return 'https://www.wildnettechnologies.com/services/digital-marketing';
+  if(/digital.market/.test(k)) return 'https://www.wildnettechnologies.com/services/digital-marketing';
+  if(/ai.market/.test(k)) return 'https://www.wildnettechnologies.com/ai-marketing-agency';
+  return 'https://www.wildnettechnologies.com/contact-us';
+}
+
+// Build the closing CTA block appended to the END of every blog (when enabled).
+// Solves the "blogs have no conversion path" problem — readers who liked the
+// article now have a clear next step to engage Wildnet.
+function buildClosingCTABlock(topic, keyword){
+  var serviceURL = pickPrimaryServiceURL(keyword, topic);
+  var topicEsc = escHtml(String(topic||'').replace(/\s+/g,' ').trim()).slice(0,60);
+  return '<!-- wp:html -->\n'+
+    '<div style="background:linear-gradient(135deg,#1e3a8a 0%,#4f46e5 100%);color:#fff;padding:32px 28px;margin:36px 0 0;border-radius:12px;text-align:center;box-shadow:0 4px 20px rgba(30,58,138,0.18)">'+
+      '<h3 style="margin:0 0 10px;font-size:22px;color:#fff;font-weight:700;line-height:1.3">Need expert help with '+(topicEsc||'this')+'?</h3>'+
+      '<p style="margin:0 auto 20px;font-size:15px;line-height:1.55;color:rgba(255,255,255,0.93);max-width:540px">Wildnet Technologies has helped 4,100+ brands scale through SEO, PPC, content, and full-funnel digital marketing. Get a free strategy call with our team — no obligations.</p>'+
+      '<a href="'+serviceURL+'" style="display:inline-block;background:#fbbf24;color:#1e3a8a;padding:13px 32px;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;letter-spacing:0.3px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">Book a Free 30-Min Call →</a>'+
+      '<div style="margin-top:14px;font-size:12px;color:rgba(255,255,255,0.75)">19+ Years · 4,100+ Brands · Google Partner</div>'+
+    '</div>\n'+
+    '<!-- /wp:html -->\n';
+}
+
+// Optional author byline at top of post — addresses E-E-A-T weakness of
+// generic "By Wildnet Technologies" with no real human attribution.
+function buildAuthorBylineBlock(authorRaw){
+  var raw = String(authorRaw||'').trim();
+  if(!raw) return '';
+  // Parse "Name, Role · Bio" — separator can be comma or middle-dot
+  var name = raw, role = '';
+  var splitMatch = raw.match(/^([^,·]+)[,·](.+)$/);
+  if(splitMatch){ name = splitMatch[1].trim(); role = splitMatch[2].trim(); }
+  var initials = name.split(/\s+/).map(function(n){return n.charAt(0).toUpperCase();}).join('').slice(0,2);
+  return '<!-- wp:html -->\n'+
+    '<div style="display:flex;align-items:center;gap:14px;padding:14px 0;margin:0 0 28px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb">'+
+      '<div style="flex-shrink:0;width:44px;height:44px;background:linear-gradient(135deg,#4f8eff,#a78bfa);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;letter-spacing:0.5px">'+escHtml(initials)+'</div>'+
+      '<div style="line-height:1.4">'+
+        '<div style="font-weight:600;color:#111827;font-size:15px">'+escHtml(name)+'</div>'+
+        (role?'<div style="color:#6b7280;font-size:13px;margin-top:2px">'+escHtml(role)+'</div>':'')+
+      '</div>'+
+    '</div>\n'+
+    '<!-- /wp:html -->\n';
+}
+
 async function runCreatePost(){
   // Validate API key first
   var apiKey=getApiKey();
@@ -2221,9 +2296,27 @@ async function runCreatePost(){
 
     // STEP 2: Write full SEO blog content with RAG context
     clog('⏳ AI writing full SEO blog post with E-E-A-T framework (1000-1500 words)…');
-    var ragContext='You are an expert SEO content writer trained on Google\'s E-E-A-T framework and advanced content strategy. INSTRUCTIONS: (1) DATES: Always use current year '+getCurrentYear()+' in content. Never mention 2024 or outdated years. (2) TITLES: Create varied, compelling titles using different patterns: Question format "How to [task]: [outcome]", Listicle "[Number] Ways to [outcome]", Problem-solution "Why [problem] and How to Fix It", Case-study "Real Results: [outcome] in [timeframe]". Rotate patterns. (3) E-E-A-T SIGNALS: Include personal experience, original research, source attribution, author expertise indicators, trust-building language. (4) CONTENT: Aim for 800-1200 words with proper semantic structure (h2, h3, p, ul, li, strong, em). (5) KEYWORDS: Naturally place primary keyword in H1, first 100 words, subheadings, conclusion. (6) NATURAL SERVICE MENTIONS: Where it fits naturally and adds value, mention related Wildnet services by name in plain text — e.g. "SEO services", "PPC services", "link building", "guest posting", "social media marketing", "local SEO", "technical SEO", "AI SEO", "ecommerce SEO" etc. Do NOT insert URLs or links yourself — just write the service name in the body text. The system will auto-link these afterwards. (7) KEY TAKEAWAYS: Provide 4-5 SHORT (under 20 words each) impactful sentences in the key_takeaways array — each one a standalone insight the reader will gain. These render as a highlighted box at the top of the article. (8) OUTPUT: Return ONLY valid JSON with keys: title, content, meta_description, key_takeaways, changes_made. Content must be clean HTML - no markdown, no backslashes, no newlines inside strings.';
-    var blogInstructions='Write a comprehensive SEO blog post (1000-1500 words). Include: engaging intro with keyword, 5-7 H2 sections covering all aspects, bullet points, FAQ section with 5 questions. Follow E-E-A-T framework with original insights. Naturally mention related Wildnet services (SEO services, PPC services, link building, guest posting, social media marketing etc.) in body text where contextually relevant — just the service name in plain text, no manual links.';
-    var writeMsg=ragContext+' TOPIC: '+topic+' | KEYWORD: '+keyword+' | COMPETITOR INSIGHTS: '+competitorInfo.substring(0,800)+' | CURRENT DATE: '+getCurrentDate()+' | '+blogInstructions+' Use ONLY these HTML tags: h2 h3 p ul li strong em. NO backslash-n in content. Output ONLY JSON (no markdown, start with { end with }): {"title":"engaging title with keyword","content":"<h2>heading</h2><p>text</p>","meta_description":"150 char description","key_takeaways":["takeaway sentence 1","takeaway sentence 2","takeaway sentence 3","takeaway sentence 4","takeaway sentence 5"],"changes_made":["point1","point2"]}';
+    var ragContext='You are an experienced senior content strategist writing for Wildnet Technologies — a 19+ year old digital marketing agency in India. Follow these rules strictly:\n\n'+
+      '(1) CURRENT DATE: '+getCurrentYear()+'. Never mention 2024 or earlier years as the current year.\n\n'+
+      '(2) TITLE PATTERN: Rotate randomly between these styles — do NOT default to listicles. Pick the style that fits the topic best:\n'+
+      '   • Question: "How Does X Actually Work?"\n'+
+      '   • Definition/Guide: "A Practical Guide to X"\n'+
+      '   • Comparison: "X vs Y: Which One Fits [use case]?"\n'+
+      '   • Problem-solution: "Why Your X Isn\'t Working (And How to Fix It)"\n'+
+      '   • Listicle (use SPARINGLY, max 1 in 4 articles): "[N] Ways to [outcome]"\n\n'+
+      '(3) FORBIDDEN OPENING PHRASES — never start the article with any of these tired hooks: "If you are still relying on outdated tactics", "Having spent over a decade", "After spending the last [X] years", "If you\'ve ever wondered", "In [year], the landscape has shifted", "Imagine if", "Picture this". Open with a specific question, a concrete scenario, a recent industry development, or a contrarian observation.\n\n'+
+      '(4) VOICE: Write as the Wildnet team using "we", "our team", "Wildnet has observed". NEVER use first-person singular "I have spent", "I conducted", "in my experience" — there is no single individual author. Authority comes from being a 19-year-old agency, not from a fake personal narrator.\n\n'+
+      '(5) NO INVENTED CASE STUDIES: Do NOT fabricate specific client metrics like "127 leads in a quarter", "3x organic traffic for a SaaS client", "tested across 35 client websites", "we improved conversion by 47%". These read as fake and Google penalises this pattern. Instead: cite real public industry sources with hedged language ("Gartner reports", "HubSpot State of Marketing 2026 found", "according to Search Engine Land"). Vague-but-true beats specific-but-fake.\n\n'+
+      '(6) E-E-A-T THROUGH SUBSTANCE: Show expertise via accurate technical detail, correct terminology, and proper sourcing — not via invented anecdotes. Reference real tools, real frameworks, real platforms.\n\n'+
+      '(7) CONTENT SHAPE: 1000-1500 words. 5-7 H2 sections. Sub-bullets are fine but each bullet should be 1-2 lines, not single words. Include a 5-question FAQ. End with a clear conclusion paragraph.\n\n'+
+      '(8) KEYWORD PLACEMENT: Primary keyword in H1, first 100 words, two H2 headings, and conclusion — naturally, never stuffed.\n\n'+
+      '(9) NATURAL SERVICE MENTIONS: Where relevant, mention Wildnet services by name in plain text — SEO services, PPC services, link building, guest posting, social media marketing, content marketing, local SEO, technical SEO, AI SEO, ecommerce SEO, digital PR. Do NOT insert URLs or anchor tags — the auto-linker handles them.\n\n'+
+      '(10) KEY TAKEAWAYS: 4-5 sentences, under 20 words each. Each must be a standalone, useful insight the reader will actually remember.\n\n'+
+      '(11) ACRONYM CAPITALISATION: Always correct — B2B not B2b, AI not Ai, SEO not Seo, SaaS not Saas, PPC not Ppc, ROI not Roi, GEO not Geo, KPI not Kpi, CRM not Crm.\n\n'+
+      '(12) OUTPUT: ONLY a single valid JSON object. No markdown fences, no commentary. Keys: title, content, meta_description, key_takeaways, changes_made.';
+
+    var blogInstructions='Write a high-quality SEO blog post (1000-1500 words) that does NOT sound like generic AI output. Specific, useful, properly sourced. 5-7 H2 sections. 5-question FAQ. Mention related Wildnet services naturally where appropriate.';
+    var writeMsg=ragContext+'\n\nTOPIC: '+topic+'\nKEYWORD: '+keyword+'\nCURRENT DATE: '+getCurrentDate()+'\nCOMPETITOR INSIGHTS: '+competitorInfo.substring(0,800)+'\n\n'+blogInstructions+'\n\nHTML tags allowed: h2 h3 p ul li strong em. NO backslash-n inside strings — use real HTML tags. Output ONLY this JSON (no markdown, no backticks, start with { end with }):\n{"title":"varied title with correct acronyms","content":"<h2>heading</h2><p>text</p>","meta_description":"150 char description","key_takeaways":["short insight 1","short insight 2","short insight 3","short insight 4","short insight 5"],"changes_made":["note1","note2"]}';
 
     var writeResp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -2258,7 +2351,47 @@ async function runCreatePost(){
       catch(re){parsed={title:topic,content:'<p>Content could not be generated. Please try again.</p>',meta_description:'',changes_made:[]};}
     }
 
-    function toTitleCase(str){var small=['a','an','the','and','but','or','for','nor','on','at','to','by','in','of','up','as','is'];return str.split(' ').map(function(w,i){return (i===0||small.indexOf(w.toLowerCase())===-1)?w.charAt(0).toUpperCase()+w.slice(1).toLowerCase():w.toLowerCase();}).join(' ');}
+    // ── ACRONYM-AWARE TITLE CASE ────────────────────────────────────────────
+    // Previous version lower-cased everything then capitalised first letter,
+    // which mangled acronyms: "B2B" → "B2b", "AI" → "Ai", "SEO" → "Seo".
+    // For an agency blog these typos kill credibility. This version preserves
+    // a registry of known acronyms and leaves mixed-case words (iPhone, eCommerce)
+    // alone.
+    function toTitleCase(str){
+      var small=['a','an','the','and','but','or','for','nor','on','at','to','by','in','of','up','as','is','vs','via','per','to'];
+      var ACRO={
+        'b2b':'B2B','b2c':'B2C','b2g':'B2G','d2c':'D2C','c2c':'C2C','b2b2c':'B2B2C',
+        'seo':'SEO','sem':'SEM','smm':'SMM','smo':'SMO','ppc':'PPC','geo':'GEO',
+        'ai':'AI','ml':'ML','llm':'LLM','llms':'LLMs','gpt':'GPT','nlp':'NLP','ar':'AR','vr':'VR',
+        'cro':'CRO','roi':'ROI','roas':'ROAS','kpi':'KPI','kpis':'KPIs','icp':'ICP',
+        'crm':'CRM','cms':'CMS','cta':'CTA','ctas':'CTAs','cdn':'CDN','dns':'DNS',
+        'ux':'UX','ui':'UI','ux/ui':'UX/UI','ui/ux':'UI/UX',
+        'gis':'GIS','ga4':'GA4','gsc':'GSC','gtm':'GTM','sso':'SSO',
+        'faq':'FAQ','faqs':'FAQs','url':'URL','urls':'URLs','api':'API','apis':'APIs',
+        'saas':'SaaS','paas':'PaaS','iaas':'IaaS','baas':'BaaS',
+        'inp':'INP','lcp':'LCP','cls':'CLS','fid':'FID','ttfb':'TTFB','cwv':'CWV','cwvs':'CWVs',
+        'usa':'USA','uk':'UK','us':'US','eu':'EU','iot':'IoT','devops':'DevOps','aiops':'AIOps',
+        'cpm':'CPM','cpc':'CPC','cpl':'CPL','cpa':'CPA','ltv':'LTV','cac':'CAC',
+        'mql':'MQL','mqls':'MQLs','sql':'SQL','arr':'ARR','mrr':'MRR',
+        'webp':'WebP','jpeg':'JPEG','png':'PNG','svg':'SVG','pdf':'PDF','csv':'CSV',
+        'html':'HTML','css':'CSS','js':'JS','json':'JSON',
+        'aws':'AWS','gcp':'GCP','e-e-a-t':'E-E-A-T','e-a-t':'E-A-T',
+        'serp':'SERP','serps':'SERPs','orm':'ORM','aso':'ASO','wpo':'WPO'
+      };
+      return str.split(/\s+/).map(function(w,i){
+        // Peel off leading/trailing punctuation (preserve them, only re-case the core)
+        var m=w.match(/^([^\w]*)([\w'\-\/&]+)([^\w]*)$/);
+        if(!m) return w;
+        var pre=m[1], core=m[2], post=m[3];
+        var lc=core.toLowerCase();
+        if(ACRO[lc]) return pre+ACRO[lc]+post;
+        // Mixed-case words (iPhone, eCommerce, YouTube) — leave alone
+        if(/[a-z]/.test(core) && /[A-Z]/.test(core) && core.charAt(0)!==core.charAt(0).toUpperCase()) return w;
+        var firstOrBig=(i===0)||small.indexOf(lc)===-1;
+        var titled=firstOrBig ? core.charAt(0).toUpperCase()+core.slice(1).toLowerCase() : lc;
+        return pre+titled+post;
+      }).join(' ');
+    }
 
     var finalTitle=toTitleCase(parsed.title||topic);
     var metaDesc=parsed.meta_description||'';
@@ -2300,6 +2433,24 @@ async function runCreatePost(){
       clog('  Key Takeaways box disabled by user','var(--muted)');
     }
 
+    // ── ENHANCEMENT 3: Author byline block (top of post, after key takeaways) ──
+    var authorRawEl=document.getElementById('newPostAuthor');
+    var authorRaw=authorRawEl?authorRawEl.value.trim():'';
+    var authorHTML=authorRaw?buildAuthorBylineBlock(authorRaw):'';
+    if(authorHTML) clog('👤 Author byline added: '+authorRaw.substring(0,60),'#22c55e');
+
+    // ── ENHANCEMENT 4: Closing CTA block (appended at end) ──
+    var optCTAEl=document.getElementById('optClosingCTA');
+    var doCTA=optCTAEl?optCTAEl.checked:true;
+    var ctaHTML='';
+    if(doCTA){
+      ctaHTML=buildClosingCTABlock(topic, keyword);
+      var ctaURL=pickPrimaryServiceURL(keyword, topic);
+      clog('📣 Closing CTA added → '+ctaURL.replace('https://www.wildnettechnologies.com',''),'#22c55e');
+    } else {
+      clog('  Closing CTA disabled by user','var(--muted)');
+    }
+
     clog('⏳ Uploading featured image…');
     var featuredMediaId=null;
     try{
@@ -2314,9 +2465,14 @@ async function runCreatePost(){
 
     clog('⏳ Publishing blog post to WordPress as '+postStatus+'…');
     var gbContent=convertToGutenberg(finalContent);
-    // Prepend the Key Takeaways block at the TOP of the post (after Gutenberg conversion
-    // so it stays as a clean self-contained wp:html block and convertToGutenberg doesn't mangle it).
+    // Final assembly order (top → bottom):
+    //   1. Key Takeaways box (TL;DR for the reader)
+    //   2. Author byline (E-E-A-T attribution)
+    //   3. Article body (Gutenberg-converted)
+    //   4. Closing CTA (conversion path)
+    if(authorHTML) gbContent = authorHTML + gbContent;
     if(takeawaysHTML) gbContent = takeawaysHTML + gbContent;
+    if(ctaHTML) gbContent = gbContent + ctaHTML;
     var pubBody={title:finalTitle,content:gbContent,status:postStatus,slug:finalSlug};
     if(featuredMediaId)pubBody.featured_media=featuredMediaId;
     if(categoryId)pubBody.categories=[parseInt(categoryId)];
