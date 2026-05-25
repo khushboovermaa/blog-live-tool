@@ -1034,7 +1034,7 @@ Return ONLY this JSON (no markdown, no explanation):
     // Use web_search tool so Claude fetches REAL Google results
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-sonnet-4-5',
         max_tokens:2000,
@@ -1065,7 +1065,7 @@ Return ONLY this JSON (no markdown, no explanation):
         loopMessages.push({role:'user',content:toolResults});
         const r2=await fetch('https://api.anthropic.com/v1/messages',{
           method:'POST',
-          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
           body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,tools:[{"type":"web_search_20250305","name":"web_search"}],messages:loopMessages})
         });
         loopData=await r2.json();
@@ -1247,7 +1247,7 @@ async function autoUpdatePage(i){
     var searchPrompt='Search Google for the keyword: '+keyword+'. List the top 5 ranking page URLs and summarize what content each page covers. Focus on: headings used, topics covered, FAQs included, word count estimate.';
     var searchResp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:searchPrompt}]})
     });
     var sd=await searchResp.json();
@@ -1264,7 +1264,7 @@ async function autoUpdatePage(i){
         smsgs.push({role:'assistant',content:blocks});
         var tr=blocks.filter(function(b){return b.type==='tool_use';}).map(function(b){return{type:'tool_result',tool_use_id:b.id,content:'Search executed.'};});
         smsgs.push({role:'user',content:tr});
-        var sr2=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:smsgs})});
+        var sr2=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:smsgs})});
         sd=await sr2.json();
         if(sd.error)throw new Error('Search loop error: '+sd.error.message);
       }else{competitorInfo=txt;break;}
@@ -1278,7 +1278,7 @@ async function autoUpdatePage(i){
 
     var writeResp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:writePrompt}]})
     });
     var wd=await writeResp.json();
@@ -1713,7 +1713,7 @@ async function runCreatePost(){
       var competitorInfo='';
       try{
         var sp='Search Google for: '+keyword+' services India. List the top 5 ranking pages: their H1, main H2s, key USPs, and any FAQs.';
-        var sRes=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:sp}]})});
+        var sRes=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:sp}]})});
         var sd=await sRes.json(); if(sd.error) throw new Error(sd.error.message);
         var smsgs=[{role:'user',content:sp}];
         for(var r=0;r<5;r++){
@@ -1722,7 +1722,7 @@ async function runCreatePost(){
           if(sd.stop_reason==='tool_use'){
             smsgs.push({role:'assistant',content:sblocks});
             smsgs.push({role:'user',content:sblocks.filter(function(b){return b.type==='tool_use';}).map(function(b){return{type:'tool_result',tool_use_id:b.id,content:'Done.'};})});
-            var sr2=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,tools:[{type:'web_search_20250305',name:'web_search'}],messages:smsgs})});
+            var sr2=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,tools:[{type:'web_search_20250305',name:'web_search'}],messages:smsgs})});
             sd=await sr2.json(); if(sd.error) throw new Error(sd.error.message);
           }else{competitorInfo=stxt;break;}
         }
@@ -1759,7 +1759,7 @@ async function runCreatePost(){
         'Return ONLY this JSON (no markdown, no backticks, start with {):\n'+
         '{"replacements":{"ORIGINAL_PHRASE":"NEW_PHRASE",...for every phrase above...},"page_title":"Best '+topic+' Services in India | Wildnet Technologies","meta_description":"160 chars max about '+topic+' services by Wildnet","faqs":[{"q":"FAQ question 1?","a":"Answer."},{"q":"FAQ question 2?","a":"Answer."},{"q":"FAQ question 3?","a":"Answer."},{"q":"FAQ question 4?","a":"Answer."},{"q":"FAQ question 5?","a":"Answer."}]}';
 
-      var rRes=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:aiPrompt}]})});
+      var rRes=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:aiPrompt}]})});
       var rData=await rRes.json(); if(rData.error) throw new Error(rData.error.message);
       var rText=(rData.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').trim();
 
@@ -1915,7 +1915,7 @@ async function runCreatePost(){
     clog('⏳ Researching top ranking pages for "'+keyword+'"…');
     var searchResp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:'Search Google for: '+keyword+'. Summarize what the top 5 ranking pages cover — their headings, topics, FAQs, and word count.'}]})
     });
     var sd=await searchResp.json();
@@ -1931,7 +1931,7 @@ async function runCreatePost(){
         smsgs.push({role:'assistant',content:blocks});
         var tr=blocks.filter(function(b){return b.type==='tool_use';}).map(function(b){return{type:'tool_result',tool_use_id:b.id,content:'Done.'};});
         smsgs.push({role:'user',content:tr});
-        var sr2=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:smsgs})});
+        var sr2=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,tools:[{type:'web_search_20250305',name:'web_search'}],messages:smsgs})});
         sd=await sr2.json();
         if(sd.error)throw new Error(sd.error.message);
       }else{competitorInfo=txt;break;}
@@ -1946,7 +1946,7 @@ async function runCreatePost(){
 
     var writeResp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-opus-4-6',max_tokens:4000,messages:[{role:'user',content:writeMsg}]})
     });
     var wd=await writeResp.json();
@@ -1969,7 +1969,7 @@ async function runCreatePost(){
       clog('⚠ Retrying with stricter prompt…','#f59e0b');
       var retryMsg='Write a blog post about: '+topic+'. Keyword: '+keyword+'. Current year: '+getCurrentYear()+'. IMPORTANT: (1) Use current year '+getCurrentYear()+' only, never 2024. (2) Create an engaging, varied title (not "Complete Guide"). (3) Include E-E-A-T signals: expertise, authority, original insights, trustworthiness. (4) Response must be ONLY valid JSON object starting with { and ending with }. Use keys: title, content, meta_description, changes_made. (5) Content must be clean HTML using only h2 h3 p ul li strong em tags. No backslashes. No newlines inside strings. No markdown.';
       if(!apiKey||!apiKey.startsWith('sk-ant-')){throw new Error('Invalid API key. Please add your Anthropic API key.');}
-      var retryResp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2024-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-opus-4-6',max_tokens:4000,messages:[{role:'user',content:retryMsg}]})});
+      var retryResp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-opus-4-6',max_tokens:4000,messages:[{role:'user',content:retryMsg}]})});
       var retryData=await retryResp.json();
       if(retryData.error)throw new Error(retryData.error.message);
       var retryText=(retryData.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').trim();
