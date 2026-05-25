@@ -198,7 +198,7 @@
     <div class="topbar-brand">Wildnet GSC</div>
     <div class="topbar-site">wildnettechnologies.com</div>
     <div class="topbar-right">
-      <div class="version-badge">✓ v2.1.0</div>
+      <div class="version-badge" title="v6.0&#10;BLOG: Key Takeaways box at top + Auto-interlink to service pages&#10;SERVICE PAGE: Smart core-name extraction + Off-domain detection + FAQ dedup + Multi-variant token sweep" style="cursor:help">✓ v6.0 · Blog+Service ✓</div>
       <div class="week-badge" id="weekBadge"></div>
       <div class="alert-badge" id="alertBadge" onclick="showActionView()">🎯 <span id="alertCount">0</span> actionable URLs</div>
       <span id="lastUpdated" style="font-size:10px;color:var(--muted);font-family:JetBrains Mono,monospace"></span>
@@ -317,6 +317,11 @@
   <div class="modal" style="max-width:560px">
     <div class="modal-title" id="createPostTitle">✦ Create New Post</div>
     <div class="modal-sub" id="createPostSub">AI will research the topic, write full SEO content and publish it live on your website</div>
+    <div style="display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#22c55e;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:4px 10px;margin:8px 0 14px;letter-spacing:0.3px">
+      <span style="font-weight:700">v6.0</span>
+      <span style="color:var(--muted)">·</span>
+      <span id="modalFeatureManifest">🎯 Key Takeaways · 🔗 Service Interlinking · 🛠 Off-domain service pages</span>
+    </div>
     <input type="hidden" id="createPostContentType" value="blog">
     <div class="modal-field">
       <label class="modal-label">Topic / Title</label>
@@ -1938,26 +1943,61 @@ async function runCreatePost(){
       // Also extract Spectra JSON text values: "headingTitle":"...", etc.
       var jsonRe=/"(?:headingTitle|description|subHeadingText|head_tag|sub_tag|ctaText|btnText|title|label|text|content)"\s*:\s*"([^"\\]{3,200})"/g; var jM;
       while((jM=jsonRe.exec(templateRaw))!==null){ if(jM[1].trim().length>3) visibleTexts.push(jM[1].trim()); }
-      // Deduplicate + keep only phrases containing the old service name or generic service terms
-      var oldName=foundTemplateName.replace(/ Services?$/i,'').trim();
+
+      // ── Smart core-name extraction ──────────────────────────────────────────
+      // Strip qualifiers ("Best", "Top", " in India", " Services", " Agency", " Company")
+      // so "Best SEO Services in India" → "SEO" and "Top PPC Services" → "PPC".
+      // Bug previously left this as "Best SEO Services in India", so the bare-token
+      // replacement pass at the bottom never matched plain "SEO" mentions.
+      function extractCoreName(s){
+        return String(s||'')
+          .replace(/\s*[\|\-–]\s*wildnet.*$/i,'')
+          .replace(/^(?:the\s+)?(?:best|top|our|leading|expert|professional|premium|world[- ]class)\s+/i,'')
+          .replace(/\s+(?:in|for|across)\s+[\w\s,&]+$/i,'')
+          .replace(/\s+(?:services?|agency|company|firm|consultants?|specialists?|experts?)$/i,'')
+          .replace(/\s+(?:services?|agency|company|firm|consultants?|specialists?|experts?)$/i,'')
+          .trim();
+      }
+      var oldName = foundTemplateName;
+      var oldCore = extractCoreName(foundTemplateName);      // e.g. "SEO"
+      var topicCore = extractCoreName(topic);                // e.g. "Geo Expertise"
+      if(!oldCore) oldCore = foundTemplateName;
+      if(!topicCore) topicCore = topic;
+      clog('  Template core: "'+oldCore+'" → Target core: "'+topicCore+'"','var(--muted)');
+
+      // Detect off-domain transformation (e.g. SEO → GIS / Geo Expertise).
+      // If the new topic shares no significant word with the old, we tell the AI
+      // to REWRITE bullet content instead of swapping service-name words.
+      var oldTokens = oldCore.toLowerCase().split(/[\s\-]+/).filter(function(w){return w.length>2;});
+      var newTokens = topicCore.toLowerCase().split(/[\s\-]+/).filter(function(w){return w.length>2;});
+      var sharedToken = oldTokens.some(function(t){return newTokens.indexOf(t)!==-1;});
+      var isOffDomain = !sharedToken && !/seo|search|organic/i.test(topicCore);
+      if(isOffDomain) clog('  ⚠ Off-domain topic detected — AI will rewrite bullet content, not just swap words','#f59e0b');
+
+      // Deduplicate + keep phrases worth transforming (now searches on oldCore, not oldName)
+      var oldCoreEsc = oldCore.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
       visibleTexts=visibleTexts.filter(function(v,i,a){
-        return a.indexOf(v)===i && (new RegExp(oldName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i').test(v)||/seo|search engine|organic|ranking/i.test(v));
-      }).slice(0,40);
+        return a.indexOf(v)===i && (new RegExp('\\b'+oldCoreEsc+'\\b','i').test(v)||/seo|search engine|organic|ranking|keyword|backlink/i.test(v));
+      }).slice(0,100);  // bumped 40 → 100 so CTAs, sub-cards, and FAQ titles all make it through
       clog('  Found '+visibleTexts.length+' phrases to transform','var(--muted)');
 
-      var aiPrompt='You are writing for Wildnet Technologies India. Transform this service page from "'+foundTemplateName+'" to "'+topic+'" (keyword: "'+keyword+'").\n\n'+
+      var transformRule = isOffDomain
+        ? '\n- OFF-DOMAIN MODE: The new topic ("'+topicCore+'") is fundamentally different from the template topic ("'+oldCore+'"). DO NOT just swap "'+oldCore+'" for "'+topicCore+'" in the bullets — that produces nonsense like "high-intent keyword targeting for geo expertise". Instead, REWRITE each phrase so the bullet content is genuinely relevant to '+topicCore+'. Example: "High-intent transactional keyword targeting" → write something topic-relevant like "Optimal site selection through demographic targeting" (if GIS). Keep structure parallel to the original.'
+        : '\n- NEAR-DOMAIN MODE: "'+topicCore+'" is a type/variant of "'+oldCore+'". Swap service name words and tighten wording for the more specific topic.';
+
+      var aiPrompt='You are writing for Wildnet Technologies India. Transform this service page from "'+oldCore+'" to "'+topicCore+'" (keyword: "'+keyword+'").\n\n'+
         'Competitor context: '+competitorInfo.substring(0,400)+'\n\n'+
         'PHRASES TO TRANSFORM (give a replacement for EVERY one):\n'+
         visibleTexts.map(function(t,i){return i+'. '+t;}).join('\n')+'\n\n'+
-        'Rules:\n- Keep "Wildnet" brand name\n- Keep all numbers (19+, 350+, 100K+, etc)\n- Keep "India" references\n- Only change the SERVICE TOPIC words\n- Make it sound natural and professional\n\n'+
+        'Rules:\n- Keep "Wildnet" brand name\n- Keep all numbers (19+, 350+, 100K+, etc)\n- Keep "India" references\n- Make it sound natural and professional'+transformRule+'\n\n'+
         'Return ONLY this JSON (no markdown, no backticks, start with {):\n'+
-        '{"replacements":{"ORIGINAL_PHRASE":"NEW_PHRASE",...for every phrase above...},"page_title":"Best '+topic+' Services in India | Wildnet Technologies","meta_description":"160 chars max about '+topic+' services by Wildnet","faqs":[{"q":"FAQ question 1?","a":"Answer."},{"q":"FAQ question 2?","a":"Answer."},{"q":"FAQ question 3?","a":"Answer."},{"q":"FAQ question 4?","a":"Answer."},{"q":"FAQ question 5?","a":"Answer."}]}';
+        '{"replacements":{"ORIGINAL_PHRASE":"NEW_PHRASE",...for every phrase above...},"page_title":"Best '+topicCore+' Services in India | Wildnet Technologies","meta_description":"160 chars max about '+topicCore+' services by Wildnet","faqs":[{"q":"FAQ question 1?","a":"Answer."},{"q":"FAQ question 2?","a":"Answer."},{"q":"FAQ question 3?","a":"Answer."},{"q":"FAQ question 4?","a":"Answer."},{"q":"FAQ question 5?","a":"Answer."}]}';
 
-      var rRes=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:aiPrompt}]})});
+      var rRes=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:6000,messages:[{role:'user',content:aiPrompt}]})});
       var rData=await rRes.json(); if(rData.error) throw new Error(rData.error.message);
       var rText=(rData.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').trim();
 
-      var replacements={}, faqs=[], pageTitle='Best '+topic+' Services in India | Wildnet Technologies', metaDesc='Expert '+topic+' services in India by Wildnet Technologies — 19+ years, 350+ experts.';
+      var replacements={}, faqs=[], pageTitle='Best '+topicCore+' Services in India | Wildnet Technologies', metaDesc='Expert '+topicCore+' services in India by Wildnet Technologies — 19+ years, 350+ experts.';
       try{
         var ci=rText.indexOf('{'), cie=rText.lastIndexOf('}');
         var rp=JSON.parse(rText.slice(ci,cie+1));
@@ -1966,17 +2006,34 @@ async function runCreatePost(){
         clog('✓ AI generated '+Object.keys(replacements).length+' replacements','#22c55e');
       }catch(pe){
         clog('⚠ AI parse failed — using basic map','#f59e0b');
-        replacements[foundTemplateName+' Services']=topic+' Services';
-        replacements['Best '+foundTemplateName+' in India']='Best '+topic+' in India';
-        replacements['Wildnet '+foundTemplateName]='Wildnet '+topic;
-        replacements['Our '+foundTemplateName+' Process']='Our '+topic+' Process';
-        replacements[foundTemplateName]=topic;
+        replacements[oldCore+' Services']=topicCore+' Services';
+        replacements['Best '+oldCore+' in India']='Best '+topicCore+' in India';
+        replacements['Wildnet '+oldCore]='Wildnet '+topicCore;
+        replacements['Our '+oldCore+' Process']='Our '+topicCore+' Process';
+        replacements[oldCore]=topicCore;
       }
 
       // ── STEP 4: Apply replacements to the cloned content ──
       clog('⏳ Step 4: Applying replacements to template…');
+
+      // ── 4a: Strip the template's existing FAQ section before we append our own ─
+      // Without this, the page ends up with TWO FAQ sections — the template's
+      // (with original-service questions) AND the AI-generated one.
+      // Strategy: find the FAQ heading (H2 containing "Frequently Asked Questions"
+      // or "Common Questions" or "FAQs") and strip everything from there to end-of-content.
+      function stripTemplateFAQ(src){
+        var faqHeadingRe = /<!--\s*wp:heading[^>]*-->\s*<h\d[^>]*>[^<]*?(?:frequently\s+asked\s+questions|common\s+questions|\bfaqs?\b)[^<]*?<\/h\d>\s*<!--\s*\/wp:heading\s*-->/i;
+        var m = faqHeadingRe.exec(src);
+        if(m){
+          clog('  Stripped template FAQ section (avoiding duplicate)','var(--muted)');
+          return src.substring(0, m.index);
+        }
+        return src;
+      }
+      var strippedRaw = stripTemplateFAQ(templateRaw);
+
       // Prepend Spectra CSS block so layout is self-contained (no wp_postmeta dependency)
-      var cloned=(spectraCSS||'')+templateRaw;
+      var cloned=(spectraCSS||'')+strippedRaw;
 
       // Sort longest → shortest to avoid partial-match clobbering
       var sortedKeys=Object.keys(replacements).sort(function(a,b){return b.length-a.length;});
@@ -2005,15 +2062,45 @@ async function runCreatePost(){
       }
 
       sortedKeys.forEach(function(orig){ cloned=safeReplace(cloned,orig,replacements[orig]); });
-      // Final pass: replace the bare service name (e.g. "SEO" → topic) wherever it wasn't caught above
-      if(oldName&&oldName!==topic){
-        cloned=safeReplace(cloned, oldName+' Services', topic+' Services');
-        cloned=safeReplace(cloned, oldName, topic);
+
+      // ── 4b: Multi-variant bare-token cleanup ─────────────────────────────────
+      // After the AI-driven replacements, sweep through common compound phrases
+      // built around the old core (e.g. "SEO Audit", "SEO Expert", "SEO Call",
+      // "SEO Optimization", "SEO Campaigns", "SEO Plans"). The previous version
+      // only did "SEO Services" + bare "SEO", which left CTA buttons like
+      // "Get Free SEO Audit" and "Book a 15-Min SEO Call" untouched.
+      if(oldCore && oldCore.toLowerCase() !== topicCore.toLowerCase()){
+        var suffixes = ['Services','Service','Agency','Company','Firm','Expert','Experts',
+                        'Audit','Call','Consultation','Optimization','Optimisation','Campaign','Campaigns',
+                        'Strategy','Strategies','Team','Plan','Plans','Package','Packages',
+                        'Specialist','Specialists','Consultant','Consultants','Manager','Process',
+                        'Best Company','Best Services','Best Agency'];
+        var variants = [];
+        suffixes.forEach(function(suf){
+          variants.push(oldCore + ' ' + suf);
+          variants.push(suf + ' for ' + oldCore);
+        });
+        variants.push(oldCore); // bare token last
+        // Longest first so "SEO Services" replaces before bare "SEO"
+        variants.sort(function(a,b){return b.length-a.length;});
+        variants.forEach(function(v){
+          var newV = v.replace(new RegExp('\\b'+oldCoreEsc+'\\b','g'), topicCore);
+          if(newV !== v) cloned = safeReplace(cloned, v, newV);
+        });
+        // Lowercase versions for body text written like "best seo services"
+        var oldCoreLower = oldCore.toLowerCase();
+        if(oldCoreLower !== oldCore){
+          variants.forEach(function(v){
+            var lv = v.toLowerCase();
+            var newLv = lv.replace(new RegExp('\\b'+oldCoreLower.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','g'), topicCore.toLowerCase());
+            if(newLv !== lv) cloned = safeReplace(cloned, lv, newLv);
+          });
+        }
       }
 
       // ── 4c: Append FAQ block ──
       if(faqs&&faqs.length){
-        var faqHtml='\n<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading">Frequently Asked Questions about '+escHtml(topic)+'</h2>\n<!-- /wp:heading -->\n';
+        var faqHtml='\n<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading">Frequently Asked Questions about '+escHtml(topicCore)+'</h2>\n<!-- /wp:heading -->\n';
         faqs.forEach(function(f){
           if(!f.q||!f.a) return;
           faqHtml+='<!-- wp:heading {"level":3} -->\n<h3 class="wp-block-heading">'+escHtml(f.q)+'</h3>\n<!-- /wp:heading -->\n<!-- wp:paragraph -->\n<p>'+escHtml(f.a)+'</p>\n<!-- /wp:paragraph -->\n';
